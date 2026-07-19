@@ -125,6 +125,7 @@
     <button class="btn primary" id="armar">Activar micrófono</button>
 
     <div class="estado"><span class="luz" id="luzMic"></span><span id="txtMic">Micrófono sin activar</span></div>
+    <div class="estado hide" id="filaReloj"><span class="luz" id="luzReloj"></span><span id="txtReloj">—</span></div>
     <div class="estado" id="filaPar"><span class="luz" id="luzPar"></span><span id="txtPar">—</span></div>
 
     <div class="meter hide" id="medidorCaja"><i id="medidor"></i></div>
@@ -157,6 +158,10 @@
         <div class="k">Arranque desfasado (ya descontado)</div>
         <div class="v" id="sarr">—</div>
       </div>
+      <div class="stat" style="grid-column:1 / -1;">
+        <div class="k">Relojes de los aparatos (ya corregido)</div>
+        <div class="v" id="srel">—</div>
+      </div>
     </div>
     <p class="note" id="confnota"></p>
   </div>
@@ -178,7 +183,9 @@
 (function(){
   "use strict";
 
-  var SUPA = "https://duqrcrabazpixdkltpbd.supabase.co/rest/v1/sincro_eventos";
+  var BASE = "https://duqrcrabazpixdkltpbd.supabase.co/rest/v1";
+  var SUPA = BASE + "/sincro_eventos";
+  var RELOJ = BASE + "/rpc/hora_servidor";
   var KEY  = "sb_publishable_jqsitKb6yi7GBuqXOwPy_w_DEmtw-3w";
   var SALA = "final";
 
@@ -226,8 +233,101 @@
   });
   elegirRol(dev);
 
+  /* ── andamiaje de prueba (temporal) ───────────────────── */
+  var SIM = false, SIM_RETRASO = 0, SIM_RELOJ = 0;
+  (function(){
+    try{
+      var sp = new URLSearchParams(window.location.search);
+      SIM = sp.get("simular") === "1";
+      SIM_RETRASO = parseInt(sp.get("retraso") || "0", 10) || 0;
+      SIM_RELOJ  = parseInt(sp.get("reloj") || "0", 10) || 0;
+    }catch(e){}
+  })();
+  var AHORA = function(){ return Date.now() + SIM_RELOJ; };   // reloj falseado del aparato
+  function envSim(t){
+    var k = Math.floor(t / 50);
+    var x = Math.sin(k * 12.9898) * 43758.5453;
+    var r = x - Math.floor(x);
+    return 0.05 + 0.45 * r * r;
+  }
+  function streamSimulado(){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    ac = new AC();
+    var dst = ac.createMediaStreamDestination();
+    var osc = ac.createOscillator(); osc.frequency.value = 240;
+    var g = ac.createGain(); g.gain.value = 0;
+    osc.connect(g); g.connect(dst); osc.start();
+    var PASO = 50, ADELANTO = 4000;
+    // el audio depende del tiempo REAL, no del reloj falseado: los dos aparatos
+    // escuchan el mismo televisor aunque sus relojes no coincidan
+    var desfase = Date.now() - ac.currentTime * 1000;
+    var proximo = Math.ceil(Date.now() / PASO) * PASO;
+    function programarAudio(){
+      var hasta = Date.now() + ADELANTO;
+      while(proximo < hasta){
+        var tA = (proximo - desfase) / 1000;
+        if(tA > ac.currentTime) g.gain.setValueAtTime(envSim(proximo - SIM_RETRASO), tA);
+        proximo += PASO;
+      }
+    }
+    programarAudio();
+    setInterval(programarAudio, 1000);
+    return Promise.resolve(dst.stream);
+  }
+
   /* ── helpers de red ───────────────────────────────────── */
   var cab = { apikey:KEY, Authorization:"Bearer " + KEY, "Content-Type":"application/json" };
+
+  /* ── reloj común ──────────────────────────────────────────
+     Los relojes de dos aparatos de consumo pueden diferir varios segundos.
+     Como el desfasaje entre televisores se mide comparando marcas de tiempo
+     de aparatos distintos, esa diferencia se colaria entera en el resultado.
+     Cada aparato mide cuanto se desvia su reloj del reloj del servidor y
+     expresa en hora de servidor todo lo que cruza al otro aparato. */
+  var offsetReloj = 0;     // reloj del aparato menos reloj del servidor, en ms
+  var rttReloj = null;     // ida y vuelta de la mejor muestra
+  var relojOk = false;
+
+  function ahoraSrv(){ return AHORA() - offsetReloj; }
+
+  function medirReloj(muestras){
+    var mejor = null, n = muestras || 5;
+    function una(){
+      var t1 = AHORA();
+      return fetch(RELOJ, { method:"POST", headers:cab, body:"{}" })
+        .then(function(r){ return r.json(); })
+        .then(function(txt){
+          var t2 = AHORA();
+          var srv = new Date(txt).getTime();
+          if(!isFinite(srv)) return;
+          var rtt = t2 - t1;
+          // se supone latencia simetrica; nos quedamos con la muestra mas rapida
+          var off = (t1 + t2) / 2 - srv;
+          if(mejor === null || rtt < mejor.rtt) mejor = { rtt:rtt, off:off };
+        })
+        .catch(function(){});
+    }
+    var p = Promise.resolve();
+    for(var i = 0; i < n; i++) p = p.then(una);
+    return p.then(function(){
+      if(mejor === null){ relojOk = false; return null; }
+      offsetReloj = mejor.off; rttReloj = mejor.rtt; relojOk = true;
+      return mejor;
+    });
+  }
+
+  function pintarReloj(){
+    if(!relojOk){
+      luz("luzReloj", "err");
+      $("txtReloj").textContent = "No se pudo consultar el reloj de referencia. El resultado puede ser erróneo.";
+      return;
+    }
+    luz("luzReloj", "on");
+    var s = (Math.abs(offsetReloj) / 1000).toFixed(2).replace(".", ",");
+    $("txtReloj").textContent = Math.abs(offsetReloj) < 250
+      ? "Reloj de este aparato en hora (±" + Math.round(Math.abs(offsetReloj)) + " ms). Ida y vuelta " + rttReloj + " ms."
+      : "Reloj de este aparato " + (offsetReloj > 0 ? "adelantado" : "atrasado") + " " + s + " s. Corregido para la medición.";
+  }
   function enviar(fila){
     fila.sala = SALA;
     return fetch(SUPA, { method:"POST", headers:cab, body:JSON.stringify(fila) });
@@ -253,12 +353,14 @@
     }
     $("armar").disabled = true;
     $("txtMic").textContent = "Pidiendo permiso…";
-    navigator.mediaDevices.getUserMedia({
+    (SIM ? streamSimulado() : navigator.mediaDevices.getUserMedia({
       audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false, channelCount:1 }
-    }).then(function(s){
+    })).then(function(s){
       stream = s;
-      var AC = window.AudioContext || window.webkitAudioContext;
-      ac = new AC();
+      if(!ac){
+        var AC = window.AudioContext || window.webkitAudioContext;
+        ac = new AC();
+      }
       if(ac.state === "suspended") ac.resume();
       srcNode = ac.createMediaStreamSource(stream);
       proc    = ac.createScriptProcessor(1024, 1, 1);
@@ -269,7 +371,7 @@
         var rms = Math.sqrt(acc / d.length);
         $("medidor").style.width = Math.min(100, rms * 320) + "%";
         if(!grabando) return;
-        if(t0 === null){ t0 = Date.now() - (d.length / ac.sampleRate) * 1000; blockLen = d.length; }
+        if(t0 === null){ t0 = AHORA() - (d.length / ac.sampleRate) * 1000; blockLen = d.length; }
         blocks.push(rms);
       };
       srcNode.connect(proc); proc.connect(mudo); mudo.connect(ac.destination);
@@ -279,10 +381,16 @@
       $("reiniciar").classList.remove("hide");
       luz("luzMic", "on");
       $("txtMic").textContent = "Micrófono activo y escuchando.";
-      latir(); tLatido = setInterval(latir, LATIDO);
-      tSondeo = setInterval(sondear, SONDEO);
-      sondear();
-      if(dev === "B") estadoProc("Esperando la orden del dispositivo 1…", "wait");
+      $("filaReloj").classList.remove("hide");
+      luz("luzReloj", "wait");
+      $("txtReloj").textContent = "Poniendo el reloj en hora…";
+      medirReloj(5).then(function(){
+        pintarReloj();
+        latir(); tLatido = setInterval(latir, LATIDO);
+        tSondeo = setInterval(sondear, SONDEO);
+        sondear();
+        if(dev === "B") estadoProc("Esperando la orden del dispositivo 1…", "wait");
+      });
     }).catch(function(err){
       $("armar").disabled = false;
       luz("luzMic", "err");
@@ -314,7 +422,7 @@
     traer("&tipo=eq.listo&dispositivo=eq." + otro + "&order=creado.desc&limit=1&select=creado")
       .then(function(f){
         var ok = false;
-        if(f && f.length) ok = (Date.now() - new Date(f[0].creado).getTime()) < VENTANA_PAR;
+        if(f && f.length) ok = (ahoraSrv() - new Date(f[0].creado).getTime()) < VENTANA_PAR;
         if(ok !== parListo){ parListo = ok; pintarPar(); }
       }).catch(function(){});
 
@@ -324,7 +432,7 @@
         if(!f || !f.length) return;
         var o = f[0];
         if(o.sesion === sesionVista) return;
-        if(o.inicio_en - Date.now() < -2000) return;   // orden vieja
+        if(o.inicio_en - ahoraSrv() < -2000) return;   // orden vieja
         sesionVista = o.sesion;
         sesion = o.sesion;
         programar(o.inicio_en);
@@ -335,7 +443,7 @@
   $("iniciar").onclick = function(){
     if(!ac || grabando) return;
     sesion = "s" + Date.now() + "-" + Math.floor(Math.random() * 100000);
-    var inicio = Date.now() + PREAVISO;
+    var inicio = ahoraSrv() + PREAVISO;   // el instante de arranque viaja en hora de servidor
     $("iniciar").disabled = true;
     estadoProc("Avisando al dispositivo 2…", "wait");
     enviar({ sesion:sesion, tipo:"orden", dispositivo:dev, inicio_en:inicio })
@@ -356,12 +464,12 @@
     $("cuenta").classList.remove("hide");
     clearInterval(tCuenta);
     tCuenta = setInterval(function(){
-      var falta = inicio - Date.now();
+      var falta = inicio - ahoraSrv();
       if(falta <= 0){ clearInterval(tCuenta); $("cuenta").textContent = "0"; return; }
       $("cuenta").textContent = Math.ceil(falta / 1000);
     }, 100);
     clearTimeout(tGrab);
-    tGrab = setTimeout(arrancar, Math.max(0, inicio - Date.now()));
+    tGrab = setTimeout(arrancar, Math.max(0, inicio - ahoraSrv()));
   }
 
   function arrancar(){
@@ -393,15 +501,22 @@
     var rng = Math.max(mx - mn, 1e-6), bin = "";
     for(i = 0; i < n; i++) bin += String.fromCharCode(Math.round(255 * (db[i] - mn) / rng));
 
-    var mia = { t0:Math.round(t0), dt:(blockLen / ac.sampleRate) * 1000, env:db2arr(bin) };
-    estadoProc("Enviando el fragmento…", "wait");
-    enviar({ sesion:sesion, tipo:"fragmento", dispositivo:dev, t0:mia.t0, dt:mia.dt, env:btoa(bin) })
-      .then(function(r){
-        if(!r.ok) throw new Error("HTTP " + r.status);
-        estadoProc("Enviado. Esperando el fragmento del otro aparato…", "wait");
-        esperarFragmento(mia, Date.now() + ESPERA_FRAG);
-      })
-      .catch(function(){ estadoProc("No se pudo enviar el fragmento. Revisá la conexión.", "err"); });
+    estadoProc("Verificando el reloj…", "wait");
+    medirReloj(3).then(function(){
+      pintarReloj();
+      // t0 se pasa a hora de servidor: es la unica forma de que dos aparatos
+      // con relojes distintos queden en la misma linea de tiempo.
+      var mia = { t0:Math.round(t0 - offsetReloj), dt:(blockLen / ac.sampleRate) * 1000,
+                  env:db2arr(bin), off:Math.round(offsetReloj) };
+      estadoProc("Enviando el fragmento…", "wait");
+      return enviar({ sesion:sesion, tipo:"fragmento", dispositivo:dev, t0:mia.t0, dt:mia.dt,
+                      env:btoa(bin), offset_reloj:mia.off })
+        .then(function(r){
+          if(!r.ok) throw new Error("HTTP " + r.status);
+          estadoProc("Enviado. Esperando el fragmento del otro aparato…", "wait");
+          esperarFragmento(mia, Date.now() + ESPERA_FRAG);
+        });
+    }).catch(function(){ estadoProc("No se pudo enviar el fragmento. Revisá la conexión.", "err"); });
   }
 
   function db2arr(bin){
@@ -413,11 +528,11 @@
   function esperarFragmento(mia, limite){
     var otro = dev === "A" ? "B" : "A";
     traer("&tipo=eq.fragmento&sesion=eq." + encodeURIComponent(sesion) +
-          "&dispositivo=eq." + otro + "&order=creado.desc&limit=1&select=t0,dt,env")
+          "&dispositivo=eq." + otro + "&order=creado.desc&limit=1&select=t0,dt,env,offset_reloj")
       .then(function(f){
         if(f && f.length){
           var raw = atob(f[0].env);
-          var suya = { t0:f[0].t0, dt:f[0].dt, env:db2arr(raw) };
+          var suya = { t0:f[0].t0, dt:f[0].dt, env:db2arr(raw), off:f[0].offset_reloj };
           var A = dev === "A" ? mia : suya;
           var B = dev === "A" ? suya : mia;
           var err = analizar(A, B);
@@ -496,11 +611,12 @@
     }
     if(!any) return "Las dos grabaciones no se superponen lo suficiente. Reiniciá el estudio.";
 
-    render(a, b, bestL, best, B.t0 - A.t0);
+    var difRelojes = (typeof B.off === "number" && typeof A.off === "number") ? (B.off - A.off) : null;
+    render(a, b, bestL, best, B.t0 - A.t0, difRelojes);
     return null;
   }
 
-  function render(a, b, bestL, best, difArranque){
+  function render(a, b, bestL, best, difArranque, difRelojes){
     var lag = bestL * GRID_MS;   // >0 → el dispositivo 2 va atrasado
     var abs = Math.abs(lag), r = best.r;
 
@@ -530,6 +646,16 @@
     var da = Math.round(difArranque);
     $("sarr").textContent = (da === 0 ? "0" : (da > 0 ? "+" + da : da)) + " ms" +
       (da === 0 ? "" : (da > 0 ? " · el 2 arrancó después" : " · el 2 arrancó antes"));
+
+    if(difRelojes === null || difRelojes === undefined){
+      $("srel").textContent = "sin dato";
+    }else{
+      var dr = Math.round(difRelojes), abr = Math.abs(dr);
+      $("srel").textContent = abr < 250
+        ? dr + " ms · los dos relojes coinciden"
+        : (dr > 0 ? "+" : "") + dr + " ms · el reloj del 2 va " +
+          (dr > 0 ? "adelantado " : "atrasado ") + (abr / 1000).toFixed(2).replace(".", ",") + " s";
+    }
     $("confnota").textContent =
       r >= 0.45 ? "Confianza alta: las dos grabaciones son claramente el mismo audio. El número es fiable."
     : r >= 0.25 ? "Confianza media. Repetí el estudio durante una jugada con relato fuerte."
