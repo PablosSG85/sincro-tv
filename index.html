@@ -358,6 +358,8 @@
     sincronizar(code);
   }
 
+  window.__PRUEBA__ = { sincronizar:function(c){ return sincronizar(c); }, sala:function(s){ SALA = s; } };
+
   /* ── envío automático y espera del otro televisor ─────── */
   function estado(txt, malo){
     $("recmsg").innerHTML = malo ? '<span class="err">' + txt + '</span>' : txt;
