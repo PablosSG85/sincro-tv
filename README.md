@@ -43,11 +43,26 @@ viaja con su marca de tiempo absoluta y el cálculo compensa la diferencia. En
 las pruebas los aparatos arrancaron con 680 ms de diferencia sin afectar el
 resultado.
 
-### Por qué no sincroniza relojes
+### Corrección de relojes (imprescindible)
 
-Los relojes del iPhone y de un Android ya están sincronizados por NTP con un
-error típico de decenas de milisegundos. Como el umbral que importa es de
-**1 segundo**, ese error es unas veinte veces menor que lo que se mide.
+Como el desfasaje se obtiene comparando marcas de tiempo tomadas por dos
+aparatos distintos, cualquier diferencia entre sus relojes se suma entera al
+resultado. Y los relojes de aparatos de consumo **no** están finamente
+sincronizados: en las pruebas, la PC del proyecto estaba 4 segundos corrida
+respecto del servidor.
+
+Por eso cada aparato mide su propio desvío contra un reloj común —la función
+`hora_servidor()` en Supabase— con el método de NTP: marca la hora antes y
+después del pedido, supone latencia simétrica y se queda con la muestra de ida
+y vuelta más corta. Todo lo que cruza al otro aparato (el instante de arranque
+y el `t0` del fragmento) viaja expresado en hora de servidor.
+
+El panel de resultado muestra el desvío detectado entre los dos relojes, ya
+descontado, para poder auditarlo.
+
+Síntoma de que esto falta: con los dos aparatos frente al **mismo** televisor
+el resultado da un valor grande en vez de cero. Ese fue el bug que motivó la
+corrección; el valor medido era exactamente la diferencia entre relojes.
 
 ## Precisión
 
@@ -58,8 +73,16 @@ error típico de decenas de milisegundos. Como el umbral que importa es de
   de un desfasaje sembrado de 400 ms dieron 360 y 260 ms. La dirección y el
   orden de magnitud siempre fueron correctos, pero **por debajo de ~100 ms el
   valor es aproximado**.
+- Prueba de control con relojes desfasados a propósito 2760 ms y los dos
+  aparatos frente al mismo televisor: resultado 0 ms, confianza 0,94, y el
+  desvío entre relojes detectado como 2759 ms.
 - Fuentes de error no corregidas: latencia de captura del micrófono de cada
-  aparato y deriva entre relojes. Ambas muy por debajo del umbral de 1 segundo.
+  aparato y el error residual de la sincronización de relojes (del orden de la
+  mitad del tiempo de ida y vuelta). Ambas muy por debajo del umbral de
+  1 segundo.
+
+**Control rápido antes de confiar en una medición:** poner los dos aparatos
+frente al mismo televisor. Tiene que dar cerca de 0 ms con confianza alta.
 
 ## Infraestructura
 

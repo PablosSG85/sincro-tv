@@ -233,48 +233,6 @@
   });
   elegirRol(dev);
 
-  /* ── andamiaje de prueba (temporal) ───────────────────── */
-  var SIM = false, SIM_RETRASO = 0, SIM_RELOJ = 0;
-  (function(){
-    try{
-      var sp = new URLSearchParams(window.location.search);
-      SIM = sp.get("simular") === "1";
-      SIM_RETRASO = parseInt(sp.get("retraso") || "0", 10) || 0;
-      SIM_RELOJ  = parseInt(sp.get("reloj") || "0", 10) || 0;
-    }catch(e){}
-  })();
-  var AHORA = function(){ return Date.now() + SIM_RELOJ; };   // reloj falseado del aparato
-  function envSim(t){
-    var k = Math.floor(t / 50);
-    var x = Math.sin(k * 12.9898) * 43758.5453;
-    var r = x - Math.floor(x);
-    return 0.05 + 0.45 * r * r;
-  }
-  function streamSimulado(){
-    var AC = window.AudioContext || window.webkitAudioContext;
-    ac = new AC();
-    var dst = ac.createMediaStreamDestination();
-    var osc = ac.createOscillator(); osc.frequency.value = 240;
-    var g = ac.createGain(); g.gain.value = 0;
-    osc.connect(g); g.connect(dst); osc.start();
-    var PASO = 50, ADELANTO = 4000;
-    // el audio depende del tiempo REAL, no del reloj falseado: los dos aparatos
-    // escuchan el mismo televisor aunque sus relojes no coincidan
-    var desfase = Date.now() - ac.currentTime * 1000;
-    var proximo = Math.ceil(Date.now() / PASO) * PASO;
-    function programarAudio(){
-      var hasta = Date.now() + ADELANTO;
-      while(proximo < hasta){
-        var tA = (proximo - desfase) / 1000;
-        if(tA > ac.currentTime) g.gain.setValueAtTime(envSim(proximo - SIM_RETRASO), tA);
-        proximo += PASO;
-      }
-    }
-    programarAudio();
-    setInterval(programarAudio, 1000);
-    return Promise.resolve(dst.stream);
-  }
-
   /* ── helpers de red ───────────────────────────────────── */
   var cab = { apikey:KEY, Authorization:"Bearer " + KEY, "Content-Type":"application/json" };
 
@@ -288,16 +246,16 @@
   var rttReloj = null;     // ida y vuelta de la mejor muestra
   var relojOk = false;
 
-  function ahoraSrv(){ return AHORA() - offsetReloj; }
+  function ahoraSrv(){ return Date.now() - offsetReloj; }
 
   function medirReloj(muestras){
     var mejor = null, n = muestras || 5;
     function una(){
-      var t1 = AHORA();
+      var t1 = Date.now();
       return fetch(RELOJ, { method:"POST", headers:cab, body:"{}" })
         .then(function(r){ return r.json(); })
         .then(function(txt){
-          var t2 = AHORA();
+          var t2 = Date.now();
           var srv = new Date(txt).getTime();
           if(!isFinite(srv)) return;
           var rtt = t2 - t1;
@@ -353,14 +311,12 @@
     }
     $("armar").disabled = true;
     $("txtMic").textContent = "Pidiendo permiso…";
-    (SIM ? streamSimulado() : navigator.mediaDevices.getUserMedia({
+    navigator.mediaDevices.getUserMedia({
       audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false, channelCount:1 }
-    })).then(function(s){
+    }).then(function(s){
       stream = s;
-      if(!ac){
-        var AC = window.AudioContext || window.webkitAudioContext;
-        ac = new AC();
-      }
+      var AC = window.AudioContext || window.webkitAudioContext;
+      ac = new AC();
       if(ac.state === "suspended") ac.resume();
       srcNode = ac.createMediaStreamSource(stream);
       proc    = ac.createScriptProcessor(1024, 1, 1);
@@ -371,7 +327,7 @@
         var rms = Math.sqrt(acc / d.length);
         $("medidor").style.width = Math.min(100, rms * 320) + "%";
         if(!grabando) return;
-        if(t0 === null){ t0 = AHORA() - (d.length / ac.sampleRate) * 1000; blockLen = d.length; }
+        if(t0 === null){ t0 = Date.now() - (d.length / ac.sampleRate) * 1000; blockLen = d.length; }
         blocks.push(rms);
       };
       srcNode.connect(proc); proc.connect(mudo); mudo.connect(ac.destination);
