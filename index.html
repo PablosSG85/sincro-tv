@@ -221,49 +221,6 @@
   });
   elegirRol(dev);
 
-  /* ── modo simulación (solo para pruebas) ──────────────── */
-  var SIM = false, SIM_RETRASO = 0;
-  (function(){
-    try{
-      var sp = new URLSearchParams(window.location.search);
-      SIM = sp.get("simular") === "1";
-      SIM_RETRASO = parseInt(sp.get("retraso") || "0", 10) || 0;
-    }catch(e){}
-  })();
-  // Envolvente determinista en función del reloj absoluto: los dos aparatos
-  // "escuchan" exactamente el mismo audio, corrido por SIM_RETRASO.
-  function envSim(t){
-    var k = Math.floor(t / 50);
-    var x = Math.sin(k * 12.9898) * 43758.5453;
-    var ruido = x - Math.floor(x);
-    return 0.05 + 0.45 * ruido * ruido;
-  }
-  function streamSimulado(){
-    var AC = window.AudioContext || window.webkitAudioContext;
-    ac = new AC();
-    var dst = ac.createMediaStreamDestination();
-    var osc = ac.createOscillator(); osc.frequency.value = 240;
-    var g = ac.createGain(); g.gain.value = 0;
-    osc.connect(g); g.connect(dst); osc.start();
-
-    // La envolvente se programa por adelantado en el hilo de audio: así no la
-    // afecta la ralentización de temporizadores de las pestañas en segundo plano.
-    var PASO = 50, ADELANTO = 4000;
-    var desfase = Date.now() - ac.currentTime * 1000;   // reloj de pared -> reloj de audio
-    var proximo = Math.ceil(Date.now() / PASO) * PASO;
-    function programarAudio(){
-      var hasta = Date.now() + ADELANTO;
-      while(proximo < hasta){
-        var tAudio = (proximo - desfase) / 1000;
-        if(tAudio > ac.currentTime) g.gain.setValueAtTime(envSim(proximo - SIM_RETRASO), tAudio);
-        proximo += PASO;
-      }
-    }
-    programarAudio();
-    setInterval(programarAudio, 1000);
-    return Promise.resolve(dst.stream);
-  }
-
   /* ── helpers de red ───────────────────────────────────── */
   var cab = { apikey:KEY, Authorization:"Bearer " + KEY, "Content-Type":"application/json" };
   function enviar(fila){
@@ -291,14 +248,12 @@
     }
     $("armar").disabled = true;
     $("txtMic").textContent = "Pidiendo permiso…";
-    (SIM ? streamSimulado() : navigator.mediaDevices.getUserMedia({
+    navigator.mediaDevices.getUserMedia({
       audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false, channelCount:1 }
-    })).then(function(s){
+    }).then(function(s){
       stream = s;
-      if(!ac){
-        var AC = window.AudioContext || window.webkitAudioContext;
-        ac = new AC();
-      }
+      var AC = window.AudioContext || window.webkitAudioContext;
+      ac = new AC();
       if(ac.state === "suspended") ac.resume();
       srcNode = ac.createMediaStreamSource(stream);
       proc    = ac.createScriptProcessor(1024, 1, 1);
@@ -605,7 +560,6 @@
     traza(b, L, css.getPropertyValue("--d2").trim() || "#56C4E8");
   }
 
-  window.__PRUEBA__ = { analizar:analizar, db2arr:db2arr };
 })();
 </script>
 </body>
