@@ -93,6 +93,7 @@
   .stat{background:var(--surface2); border:1px solid var(--line); border-radius:11px; padding:10px 12px;}
   .stat .k{font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim);}
   .stat .v{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:17px; font-weight:600; margin-top:2px;}
+  #sarr{font-size:13px; font-weight:500; color:var(--dim);}
   .note{font-size:13px; color:var(--dim); border-left:2px solid var(--line); padding-left:11px;}
 
   ol{margin:0; padding-left:20px; color:var(--dim); font-size:14px; display:flex; flex-direction:column; gap:6px;}
@@ -152,6 +153,10 @@
     <div class="stats">
       <div class="stat"><div class="k">Confianza</div><div class="v" id="sconf">—</div></div>
       <div class="stat"><div class="k">Audio comparado</div><div class="v" id="sover">—</div></div>
+      <div class="stat" style="grid-column:1 / -1;">
+        <div class="k">Arranque desfasado (ya descontado)</div>
+        <div class="v" id="sarr">—</div>
+      </div>
     </div>
     <p class="note" id="confnota"></p>
   </div>
@@ -491,11 +496,11 @@
     }
     if(!any) return "Las dos grabaciones no se superponen lo suficiente. Reiniciá el estudio.";
 
-    render(a, b, bestL, best);
+    render(a, b, bestL, best, B.t0 - A.t0);
     return null;
   }
 
-  function render(a, b, bestL, best){
+  function render(a, b, bestL, best, difArranque){
     var lag = bestL * GRID_MS;   // >0 → el dispositivo 2 va atrasado
     var abs = Math.abs(lag), r = best.r;
 
@@ -522,6 +527,9 @@
     $("sconf").textContent = r.toFixed(2).replace(".", ",");
     $("sconf").style.color = r >= 0.45 ? "var(--good)" : (r >= 0.25 ? "var(--d1)" : "var(--bad)");
     $("sover").textContent = (best.n * GRID_MS / 1000).toFixed(1).replace(".", ",") + " s";
+    var da = Math.round(difArranque);
+    $("sarr").textContent = (da === 0 ? "0" : (da > 0 ? "+" + da : da)) + " ms" +
+      (da === 0 ? "" : (da > 0 ? " · el 2 arrancó después" : " · el 2 arrancó antes"));
     $("confnota").textContent =
       r >= 0.45 ? "Confianza alta: las dos grabaciones son claramente el mismo audio. El número es fiable."
     : r >= 0.25 ? "Confianza media. Repetí el estudio durante una jugada con relato fuerte."
