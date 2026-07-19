@@ -245,7 +245,22 @@
     var osc = ac.createOscillator(); osc.frequency.value = 240;
     var g = ac.createGain(); g.gain.value = 0;
     osc.connect(g); g.connect(dst); osc.start();
-    setInterval(function(){ g.gain.value = envSim(Date.now() - SIM_RETRASO); }, 20);
+
+    // La envolvente se programa por adelantado en el hilo de audio: así no la
+    // afecta la ralentización de temporizadores de las pestañas en segundo plano.
+    var PASO = 50, ADELANTO = 4000;
+    var desfase = Date.now() - ac.currentTime * 1000;   // reloj de pared -> reloj de audio
+    var proximo = Math.ceil(Date.now() / PASO) * PASO;
+    function programarAudio(){
+      var hasta = Date.now() + ADELANTO;
+      while(proximo < hasta){
+        var tAudio = (proximo - desfase) / 1000;
+        if(tAudio > ac.currentTime) g.gain.setValueAtTime(envSim(proximo - SIM_RETRASO), tAudio);
+        proximo += PASO;
+      }
+    }
+    programarAudio();
+    setInterval(programarAudio, 1000);
     return Promise.resolve(dst.stream);
   }
 
