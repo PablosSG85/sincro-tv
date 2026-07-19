@@ -237,6 +237,17 @@
     };
   });
 
+  /* ── preselección por link: ?tv=1 o ?tv=2 ─────────────── */
+  (function(){
+    var q = null;
+    try{ q = new URLSearchParams(window.location.search).get("tv"); }catch(e){}
+    if(q !== "1" && q !== "2") return;
+    var want = q === "1" ? "A" : "B";
+    Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function(b){
+      if(b.getAttribute("data-dev") === want) b.click();
+    });
+  })();
+
   /* ── grabación ────────────────────────────────────────── */
   function cleanup(){
     if(proc){ proc.onaudioprocess = null; try{ proc.disconnect(); }catch(e){} }

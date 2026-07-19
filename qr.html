@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SINCRO · códigos para abrir en cada aparato</title>
+<style>
+  :root{
+    --ground:#0B0F14; --surface:#141A22; --line:#253040;
+    --txt:#E6EDF5; --dim:#8695A8; --tv1:#F0A03C; --tv2:#56C4E8;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,"Roboto Mono",monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --ground:#F5F7FA; --surface:#FFFFFF; --line:#D5DDE7; --txt:#0E141C; --dim:#5A6675; --tv1:#B96C10; --tv2:#0F7BA6; }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--ground); color:var(--txt); line-height:1.5;
+       font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  .wrap{max-width:900px; margin:0 auto; padding:32px 20px 56px; display:flex; flex-direction:column; gap:26px;}
+  .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--dim);}
+  h1{margin:0; font-size:28px; font-weight:800; letter-spacing:-.02em; text-wrap:balance;}
+  .lede{margin:0; color:var(--dim); max-width:56ch;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:18px;}
+  .qr{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:22px;
+      display:flex; flex-direction:column; align-items:center; gap:12px;}
+  .qr h2{margin:0; font-size:17px; font-weight:800;}
+  .qr[data-d="1"] h2{color:var(--tv1);} .qr[data-d="2"] h2{color:var(--tv2);}
+  .qr img{width:100%; max-width:280px; height:auto; background:#fff; border-radius:12px; padding:10px; display:block;}
+  .qr code{font-family:var(--mono); font-size:11px; color:var(--dim); word-break:break-all; text-align:center;}
+  ol{margin:0; padding-left:20px; color:var(--dim); display:flex; flex-direction:column; gap:7px; max-width:60ch;}
+  ol b{color:var(--txt);}
+  @media print{ body{background:#fff; color:#000;} .noprint{display:none;} .qr{border:1px solid #ccc;} }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <span class="eyebrow">SINCRO · desfasaje entre televisores</span>
+      <h1>Escaneá uno en cada aparato</h1>
+      <p class="lede">Cada código abre la misma app, pero con el televisor ya elegido. No hay que tocar el selector.</p>
+    </header>
+
+    <div class="grid">
+      <div class="qr" data-d="1">
+        <h2>TV 1 · tu depto</h2>
+        <img src="QR-tv1.png" alt="Código QR que abre la app como TV 1">
+        <code>pablossg85.github.io/sincro-tv/?tv=1</code>
+      </div>
+      <div class="qr" data-d="2">
+        <h2>TV 2 · el vecino</h2>
+        <img src="QR-tv2.png" alt="Código QR que abre la app como TV 2">
+        <code>pablossg85.github.io/sincro-tv/?tv=2</code>
+      </div>
+    </div>
+
+    <ol class="noprint">
+      <li>Los dos televisores en <b>el mismo canal</b>, volumen normal, durante juego corrido.</li>
+      <li>Cada uno escanea su código y deja el aparato <b>cerca del televisor</b>.</li>
+      <li>Se llaman por teléfono, cuentan <b>3, 2, 1</b> y aprietan Grabar a la vez.</li>
+      <li>Se pasan los dos códigos que salen, se pegan en <b>Comparar</b>, y ahí está el desfasaje.</li>
+    </ol>
+  </div>
+</body>
+</html>
