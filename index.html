@@ -1,345 +1,414 @@
-<title>SINCRO · ¿Están sincronizados los dos televisores?</title>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0F14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>SINCRO · desfasaje entre televisores</title>
 <style>
   :root{
-    --ground:#0B0F14;
-    --surface:#141A22;
-    --surface2:#1B232D;
-    --line:#253040;
-    --txt:#E6EDF5;
-    --dim:#8695A8;
-    --tv1:#F0A03C;
-    --tv2:#56C4E8;
-    --good:#3FBF7F;
-    --bad:#E5484D;
-    --shadow:rgba(0,0,0,.45);
+    --ground:#0B0F14; --surface:#141A22; --surface2:#1B232D; --line:#253040;
+    --txt:#E6EDF5; --dim:#8695A8; --d1:#F0A03C; --d2:#56C4E8;
+    --good:#3FBF7F; --bad:#E5484D; --shadow:rgba(0,0,0,.45);
     --mono:ui-monospace,"SF Mono",SFMono-Regular,"Roboto Mono","DejaVu Sans Mono",monospace;
     --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   }
   @media (prefers-color-scheme: light){
-    :root{
-      --ground:#F5F7FA; --surface:#FFFFFF; --surface2:#EDF1F6; --line:#D5DDE7;
-      --txt:#0E141C; --dim:#5A6675; --tv1:#B96C10; --tv2:#0F7BA6;
-      --good:#1D8A57; --bad:#C3282D; --shadow:rgba(16,24,36,.10);
-    }
+    :root{ --ground:#F5F7FA; --surface:#FFFFFF; --surface2:#EDF1F6; --line:#D5DDE7;
+           --txt:#0E141C; --dim:#5A6675; --d1:#B96C10; --d2:#0F7BA6;
+           --good:#1D8A57; --bad:#C3282D; --shadow:rgba(16,24,36,.10); }
   }
   :root[data-theme="dark"]{
     --ground:#0B0F14; --surface:#141A22; --surface2:#1B232D; --line:#253040;
-    --txt:#E6EDF5; --dim:#8695A8; --tv1:#F0A03C; --tv2:#56C4E8;
+    --txt:#E6EDF5; --dim:#8695A8; --d1:#F0A03C; --d2:#56C4E8;
     --good:#3FBF7F; --bad:#E5484D; --shadow:rgba(0,0,0,.45);
   }
   :root[data-theme="light"]{
     --ground:#F5F7FA; --surface:#FFFFFF; --surface2:#EDF1F6; --line:#D5DDE7;
-    --txt:#0E141C; --dim:#5A6675; --tv1:#B96C10; --tv2:#0F7BA6;
+    --txt:#0E141C; --dim:#5A6675; --d1:#B96C10; --d2:#0F7BA6;
     --good:#1D8A57; --bad:#C3282D; --shadow:rgba(16,24,36,.10);
   }
 
   *{box-sizing:border-box;}
   body{margin:0; background:var(--ground); color:var(--txt); font-family:var(--sans); line-height:1.5;}
-  .wrap{max-width:560px; margin:0 auto; padding:20px 16px 64px; display:flex; flex-direction:column; gap:22px;}
+  .wrap{max-width:560px; margin:0 auto; padding:20px 16px 56px; display:flex; flex-direction:column; gap:20px;}
 
-  header{display:flex; flex-direction:column; gap:6px;}
   .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--dim);}
-  h1{margin:0; font-size:30px; line-height:1.1; font-weight:800; letter-spacing:-.02em; text-wrap:balance;}
+  h1{margin:0; font-size:27px; line-height:1.12; font-weight:800; letter-spacing:-.02em; text-wrap:balance;}
   .lede{margin:0; color:var(--dim); font-size:15px; max-width:46ch;}
 
-  .tabs{display:flex; gap:4px; background:var(--surface2); border:1px solid var(--line); border-radius:12px; padding:4px;}
-  .tabs button{flex:1; appearance:none; background:none; border:none; border-radius:9px; padding:10px 4px;
-    font-family:var(--sans); font-size:14px; font-weight:700; color:var(--dim); cursor:pointer;}
-  .tabs button[aria-selected="true"]{background:var(--surface); color:var(--txt); box-shadow:0 1px 4px var(--shadow);}
-  .tabs button:focus-visible, .btn:focus-visible, .seg button:focus-visible, textarea:focus-visible{
-    outline:2px solid var(--tv2); outline-offset:2px;}
-
-  .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px; display:flex; flex-direction:column; gap:14px;}
-  .card h2{margin:0; font-size:16px; font-weight:700; letter-spacing:-.01em;}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px;
+        display:flex; flex-direction:column; gap:14px;}
+  .card h2{margin:0; font-size:16px; font-weight:700;}
   .card p{margin:0; color:var(--dim); font-size:14px;}
-
-  .label{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--dim);}
 
   .seg{display:flex; gap:8px;}
   .seg button{flex:1; appearance:none; background:var(--surface2); border:1px solid var(--line); border-radius:12px;
-    padding:12px 8px; font-family:var(--sans); font-size:14px; font-weight:700; color:var(--dim); cursor:pointer;}
+    padding:11px 8px; font-family:var(--sans); font-size:14px; font-weight:700; color:var(--dim); cursor:pointer;}
   .seg button[aria-pressed="true"]{color:var(--ground); border-color:transparent;}
-  .seg button[data-dev="A"][aria-pressed="true"]{background:var(--tv1);}
-  .seg button[data-dev="B"][aria-pressed="true"]{background:var(--tv2);}
-
-  .recwrap{display:flex; flex-direction:column; align-items:center; gap:14px; padding:6px 0;}
-  .rec{width:150px; height:150px; border-radius:50%; border:3px solid var(--line); background:var(--surface2);
-    color:var(--txt); font-family:var(--mono); font-size:15px; font-weight:600; letter-spacing:.06em;
-    cursor:pointer; display:flex; align-items:center; justify-content:center; text-align:center; padding:10px;}
-  .rec[data-state="rec"]{border-color:var(--bad); color:var(--bad); animation:pulse 1.4s ease-in-out infinite;}
-  .rec[disabled]{opacity:.45; cursor:default; animation:none;}
-  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(229,72,77,.35);} 50%{box-shadow:0 0 0 14px rgba(229,72,77,0);}}
-  @media (prefers-reduced-motion: reduce){ .rec[data-state="rec"]{animation:none;} }
-
-  .meter{width:100%; height:6px; background:var(--surface2); border-radius:99px; overflow:hidden;}
-  .meter i{display:block; height:100%; width:0%; background:var(--good); border-radius:99px;}
+  .seg button[data-dev="A"][aria-pressed="true"]{background:var(--d1);}
+  .seg button[data-dev="B"][aria-pressed="true"]{background:var(--d2);}
+  .rolnota{font-size:13px; color:var(--dim);}
 
   .btn{appearance:none; border:1px solid var(--line); background:var(--surface2); color:var(--txt);
-    border-radius:12px; padding:13px 16px; font-family:var(--sans); font-size:15px; font-weight:700; cursor:pointer; width:100%;}
+    border-radius:12px; padding:15px 16px; font-family:var(--sans); font-size:16px; font-weight:700;
+    cursor:pointer; width:100%;}
   .btn.primary{background:var(--txt); color:var(--ground); border-color:transparent;}
-  .btn:disabled{opacity:.45; cursor:default;}
-  .row{display:flex; gap:8px;}
+  .btn.ghost{font-size:14px; padding:11px 14px; font-weight:600; color:var(--dim);}
+  .btn:disabled{opacity:.4; cursor:default;}
+  .btn:focus-visible, .seg button:focus-visible{outline:2px solid var(--d2); outline-offset:2px;}
 
-  textarea{width:100%; background:var(--surface2); border:1px solid var(--line); border-radius:12px; color:var(--txt);
-    font-family:var(--mono); font-size:12px; padding:11px; resize:vertical; min-height:76px;}
-  textarea::placeholder{color:var(--dim);}
+  .estado{display:flex; align-items:center; gap:10px; background:var(--surface2); border:1px solid var(--line);
+          border-radius:12px; padding:12px 14px; font-size:14px;}
+  .luz{width:10px; height:10px; border-radius:50%; background:var(--dim); flex:none;}
+  .luz.on{background:var(--good);}
+  .luz.wait{background:var(--d1); animation:latir 1.3s ease-in-out infinite;}
+  .luz.err{background:var(--bad);}
+  @keyframes latir{0%,100%{opacity:1;} 50%{opacity:.25;}}
+  @media (prefers-reduced-motion: reduce){ .luz.wait{animation:none;} }
 
-  ol{margin:0; padding-left:20px; color:var(--dim); font-size:14px; display:flex; flex-direction:column; gap:7px;}
-  ol b{color:var(--txt); font-weight:700;}
+  .cuenta{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:76px; font-weight:600;
+          text-align:center; line-height:1; letter-spacing:-.04em;}
+  .meter{width:100%; height:8px; background:var(--surface2); border-radius:99px; overflow:hidden;}
+  .meter i{display:block; height:100%; width:0%; background:var(--good); border-radius:99px;}
 
-  .readout{display:flex; flex-direction:column; align-items:center; gap:8px; padding:10px 0 4px;}
-  .big{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:58px; line-height:1; font-weight:600; letter-spacing:-.03em;}
-  .pill{display:inline-flex; align-items:center; gap:7px; border-radius:99px; padding:7px 15px;
-    font-size:13px; font-weight:800; letter-spacing:.02em;}
+  .readout{display:flex; flex-direction:column; align-items:center; gap:9px; padding:6px 0 2px;}
+  .big{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:56px; line-height:1;
+       font-weight:600; letter-spacing:-.03em;}
+  .big small{font-size:22px; color:var(--dim); font-weight:500; margin-left:4px;}
+  .pill{display:inline-flex; border-radius:99px; padding:7px 15px; font-size:13px; font-weight:800;}
   .pill.ok{background:color-mix(in srgb, var(--good) 16%, transparent); color:var(--good);}
   .pill.no{background:color-mix(in srgb, var(--bad) 16%, transparent); color:var(--bad);}
-  .verdict{text-align:center; font-size:15px; max-width:38ch; margin:0 auto;}
+  .verdict{text-align:center; font-size:15px; max-width:40ch; margin:0 auto;}
   .verdict strong{font-weight:800;}
 
-  canvas{width:100%; height:96px; display:block; background:var(--surface2); border:1px solid var(--line); border-radius:12px;}
-  .legend{display:flex; gap:16px; justify-content:center; font-family:var(--mono); font-size:11px; color:var(--dim); letter-spacing:.08em;}
+  canvas{width:100%; height:92px; display:block; background:var(--surface2);
+         border:1px solid var(--line); border-radius:12px;}
+  .legend{display:flex; gap:16px; justify-content:center; font-family:var(--mono); font-size:11px;
+          color:var(--dim); letter-spacing:.06em;}
   .legend i{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:6px; vertical-align:middle;}
-
   .stats{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
   .stat{background:var(--surface2); border:1px solid var(--line); border-radius:11px; padding:10px 12px;}
   .stat .k{font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim);}
   .stat .v{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:17px; font-weight:600; margin-top:2px;}
-
   .note{font-size:13px; color:var(--dim); border-left:2px solid var(--line); padding-left:11px;}
-  .err{color:var(--bad); font-size:14px; font-weight:600;}
+
+  ol{margin:0; padding-left:20px; color:var(--dim); font-size:14px; display:flex; flex-direction:column; gap:6px;}
+  ol b{color:var(--txt);}
   .hide{display:none !important;}
   footer{color:var(--dim); font-size:12px; text-align:center; font-family:var(--mono); letter-spacing:.06em;}
 </style>
-
+</head>
+<body>
 <div class="wrap">
   <header>
-    <span class="eyebrow">Medidor de desfasaje · audio</span>
-    <h1>¿Los dos televisores están sincronizados?</h1>
-    <p class="lede">Cada aparato graba 20 segundos del audio de su televisor. Después se comparan las dos grabaciones y sale el desfasaje exacto en milisegundos.</p>
+    <span class="eyebrow">Estudio de sincronismo</span>
+    <h1>¿Cuánto se adelanta un televisor respecto del otro?</h1>
+    <p class="lede">El dispositivo 1 comanda. El 2 queda escuchando y arranca solo cuando el 1 da la orden.</p>
   </header>
 
-  <div class="tabs" role="tablist">
-    <button role="tab" id="tab-medir" aria-selected="true" aria-controls="p-medir">1 · Medir</button>
-    <button role="tab" id="tab-comparar" aria-selected="false" aria-controls="p-comparar">2 · Respaldo</button>
+  <div class="card">
+    <h2>Este aparato es</h2>
+    <div class="seg">
+      <button type="button" data-dev="A" aria-pressed="true">Dispositivo 1</button>
+      <button type="button" data-dev="B" aria-pressed="false">Dispositivo 2</button>
+    </div>
+    <p class="rolnota" id="rolnota"></p>
   </div>
 
-  <!-- ── MEDIR ───────────────────────────────────────────── -->
-  <section id="p-medir" role="tabpanel" aria-labelledby="tab-medir" style="display:flex; flex-direction:column; gap:22px;">
-    <div class="card">
-      <h2>Antes de empezar</h2>
-      <ol>
-        <li>Los dos televisores en <b>el mismo canal</b>, con volumen normal.</li>
-        <li>Cada uno con su aparato <b>cerca del televisor</b> y sin auriculares puestos.</li>
-        <li>Coordinen por teléfono y aprieten grabar <b>a la vez</b> — con que arranquen dentro de los mismos 8 segundos alcanza.</li>
-        <li>Al terminar, <b>el resultado aparece solo</b> en las dos pantallas. No hay que pasarse nada.</li>
-      </ol>
-      <p class="note">Grabá durante juego corrido, no en el entretiempo: la medición necesita audio con cambios (relato, cancha, público). Silencio no sirve.</p>
+  <div class="card">
+    <h2>Estudio</h2>
+
+    <button class="btn primary" id="armar">Activar micrófono</button>
+
+    <div class="estado"><span class="luz" id="luzMic"></span><span id="txtMic">Micrófono sin activar</span></div>
+    <div class="estado" id="filaPar"><span class="luz" id="luzPar"></span><span id="txtPar">—</span></div>
+
+    <div class="meter hide" id="medidorCaja"><i id="medidor"></i></div>
+
+    <div class="cuenta hide" id="cuenta">3</div>
+
+    <button class="btn primary hide" id="iniciar" disabled>Iniciar estudio</button>
+    <p class="note hide" id="avisoEsclavo">Este aparato no inicia nada. Queda escuchando hasta que el dispositivo 1 dé la orden.</p>
+
+    <div class="estado hide" id="filaProc"><span class="luz" id="luzProc"></span><span id="txtProc">—</span></div>
+
+    <button class="btn ghost hide" id="reiniciar">Reiniciar estudio</button>
+  </div>
+
+  <div class="card hide" id="rescard">
+    <div class="readout">
+      <div class="big" id="bigms">—</div>
+      <div class="pill" id="pill">—</div>
     </div>
-
-    <div class="card">
-      <h2>¿Qué televisor estás midiendo?</h2>
-      <div class="seg">
-        <button type="button" data-dev="A" aria-pressed="true">TV 1 · Tu depto</button>
-        <button type="button" data-dev="B" aria-pressed="false">TV 2 · El vecino</button>
-      </div>
-
-      <div class="recwrap">
-        <button type="button" class="rec" id="rec" data-state="idle">Grabar<br>20 s</button>
-        <div class="meter" aria-hidden="true"><i id="meter"></i></div>
-        <p id="recmsg" style="text-align:center;">Tocá para pedir el micrófono y empezar.</p>
-        <p id="plano" class="note hide">El audio sonó bastante plano. Si el resultado da poco confiable, repetí durante una jugada con más relato.</p>
-      </div>
+    <p class="verdict" id="verdict"></p>
+    <canvas id="cv" width="1040" height="184"></canvas>
+    <div class="legend">
+      <span><i style="background:var(--d1);"></i>Dispositivo 1</span>
+      <span><i style="background:var(--d2);"></i>Dispositivo 2 (alineado)</span>
     </div>
-
-    <div class="card hide" id="outcard">
-      <h2>Respaldo · pasá este código</h2>
-      <p>Solo hace falta si el envío automático falló. Mandáselo por mensaje al otro depto y péguenlo en la pestaña Comparar.</p>
-      <textarea id="out" readonly rows="4"></textarea>
-      <div class="row">
-        <button class="btn" id="copy">Copiar</button>
-        <button class="btn primary" id="share">Compartir</button>
-      </div>
+    <div class="stats">
+      <div class="stat"><div class="k">Confianza</div><div class="v" id="sconf">—</div></div>
+      <div class="stat"><div class="k">Audio comparado</div><div class="v" id="sover">—</div></div>
     </div>
-  </section>
+    <p class="note" id="confnota"></p>
+  </div>
 
-  <!-- ── COMPARAR ────────────────────────────────────────── -->
-  <section id="p-comparar" role="tabpanel" aria-labelledby="tab-comparar" class="hide" style="flex-direction:column; gap:22px;">
-    <div class="card">
-      <h2>Pegá los dos códigos</h2>
-      <div>
-        <div class="label" style="margin-bottom:6px; color:var(--tv1);">TV 1 · Tu depto</div>
-        <textarea id="inA" rows="3" placeholder="SYNC1.…"></textarea>
-      </div>
-      <div>
-        <div class="label" style="margin-bottom:6px; color:var(--tv2);">TV 2 · El vecino</div>
-        <textarea id="inB" rows="3" placeholder="SYNC1.…"></textarea>
-      </div>
-      <button class="btn primary" id="calc">Calcular desfasaje</button>
-      <p class="err hide" id="err"></p>
-    </div>
+  <div class="card">
+    <h2>Cómo se hace</h2>
+    <ol>
+      <li>Los dos televisores en <b>el mismo canal</b>, volumen normal, con juego corrido.</li>
+      <li>Cada aparato cerca de su televisor. Los dos tocan <b>Activar micrófono</b>.</li>
+      <li>Cuando el dispositivo 1 vea que el 2 está escuchando, toca <b>Iniciar estudio</b>.</li>
+      <li>Graban 20 segundos y el resultado aparece <b>solo, en las dos pantallas</b>.</li>
+    </ol>
+  </div>
 
-    <div class="card hide" id="rescard">
-      <div class="readout">
-        <div class="big" id="bigms">—</div>
-        <div class="pill" id="pill">—</div>
-      </div>
-      <p class="verdict" id="verdict"></p>
-      <canvas id="cv" width="1040" height="192"></canvas>
-      <div class="legend">
-        <span><i style="background:var(--tv1);"></i>TV 1</span>
-        <span><i style="background:var(--tv2);"></i>TV 2 (alineado)</span>
-      </div>
-      <div class="stats">
-        <div class="stat"><div class="k">Confianza</div><div class="v" id="sconf">—</div></div>
-        <div class="stat"><div class="k">Audio comparado</div><div class="v" id="sover">—</div></div>
-      </div>
-      <p class="note" id="conf-note"></p>
-    </div>
-  </section>
-
-  <footer>Medición por correlación cruzada de envolvente</footer>
+  <footer>Correlación cruzada de envolvente · resolución 20 ms</footer>
 </div>
 
 <script>
 (function(){
   "use strict";
 
-  var DUR_MS   = 20000;   // duración de cada grabación
-  var GRID_MS  = 20;      // resolución de la grilla común
-  var LAG_MAX  = 3000;    // rango de búsqueda de desfasaje (±ms)
-  var MIN_OVER = 150;     // muestras mínimas solapadas (150 × 20 ms = 3 s)
-  var UMBRAL   = 1000;    // el límite que pidió el usuario, en ms
-
-  /* Envío automático: los dos aparatos dejan su fragmento acá y cada uno
-     busca el del otro. La clave es la publicable (va en el navegador). */
-  var SUPA_URL = "https://duqrcrabazpixdkltpbd.supabase.co/rest/v1/sincro_tv";
-  var SUPA_KEY = "sb_publishable_jqsitKb6yi7GBuqXOwPy_w_DEmtw-3w";
+  var SUPA = "https://duqrcrabazpixdkltpbd.supabase.co/rest/v1/sincro_eventos";
+  var KEY  = "sb_publishable_jqsitKb6yi7GBuqXOwPy_w_DEmtw-3w";
   var SALA = "final";
-  var ESPERA_MS = 150000;  // cuánto esperamos al otro televisor
-  var SONDEO_MS = 3000;
 
-  var dev = "A";
-  var ac, stream, proc, srcNode, gainNode;
-  var blocks = [], t0 = null, blockLen = 0, stopTimer = null;
+  var DUR_MS     = 20000;   // duración de la grabación
+  var PREAVISO   = 5000;    // margen entre la orden y el arranque real
+  var GRID_MS    = 20;      // resolución de la grilla común
+  var LAG_MAX    = 3000;    // rango de búsqueda del desfasaje
+  var MIN_OVER   = 150;     // mínimo solape exigido (3 s)
+  var UMBRAL     = 1000;    // límite que le importa al usuario
+  var SONDEO     = 1500;    // cada cuánto se consulta la base
+  var LATIDO     = 8000;    // cada cuánto se avisa "sigo escuchando"
+  var VENTANA_PAR= 25000;   // presencia válida del otro aparato
+  var ESPERA_FRAG= 150000;  // cuánto se espera el fragmento del otro
 
   var $ = function(id){ return document.getElementById(id); };
+  var dev = "A", sesion = null, sesionVista = null;
+  var ac, stream, proc, srcNode, mudo;
+  var grabando = false, blocks = [], t0 = null, blockLen = 0;
+  var tLatido = null, tSondeo = null, tCuenta = null, tGrab = null, tEsperaFrag = null;
+  var parListo = false;
 
-  /* ── pestañas ─────────────────────────────────────────── */
-  function showTab(which){
-    var medir = which === "medir";
-    $("tab-medir").setAttribute("aria-selected", medir);
-    $("tab-comparar").setAttribute("aria-selected", !medir);
-    $("p-medir").classList.toggle("hide", !medir);
-    $("p-comparar").classList.toggle("hide", medir);
-    $("p-medir").style.display = medir ? "flex" : "";
-    $("p-comparar").style.display = medir ? "" : "flex";
-  }
-  $("tab-medir").onclick = function(){ showTab("medir"); };
-  $("tab-comparar").onclick = function(){ showTab("comparar"); };
-
-  /* ── selector de televisor ────────────────────────────── */
-  Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function(b){
-    b.onclick = function(){
-      dev = b.getAttribute("data-dev");
-      Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function(o){
-        o.setAttribute("aria-pressed", o === b);
-      });
-    };
-  });
-
-  /* ── preselección por link: ?tv=1 o ?tv=2 ─────────────── */
+  /* ── parámetros del link ──────────────────────────────── */
   (function(){
-    var q = null, s = null;
-    try{
-      var sp = new URLSearchParams(window.location.search);
-      q = sp.get("tv"); s = sp.get("sala");
-    }catch(e){}
-    if(s) SALA = s;
-    if(q !== "1" && q !== "2") return;
-    var want = q === "1" ? "A" : "B";
-    Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function(b){
-      if(b.getAttribute("data-dev") === want) b.click();
-    });
+    var sp;
+    try{ sp = new URLSearchParams(window.location.search); }catch(e){ return; }
+    var s = sp.get("sala"); if(s) SALA = s;
+    var q = sp.get("tv");
+    if(q === "1" || q === "2") elegirRol(q === "1" ? "A" : "B");
   })();
 
-  /* ── grabación ────────────────────────────────────────── */
-  function cleanup(){
-    if(proc){ proc.onaudioprocess = null; try{ proc.disconnect(); }catch(e){} }
-    if(srcNode) try{ srcNode.disconnect(); }catch(e){}
-    if(gainNode) try{ gainNode.disconnect(); }catch(e){}
-    if(stream) stream.getTracks().forEach(function(t){ t.stop(); });
-    if(ac) try{ ac.close(); }catch(e){}
-    ac = stream = proc = srcNode = gainNode = null;
+  function elegirRol(d){
+    dev = d;
+    Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function(b){
+      b.setAttribute("aria-pressed", b.getAttribute("data-dev") === d);
+    });
+    $("rolnota").textContent = d === "A"
+      ? "Comanda el estudio: desde acá se inicia la grabación en los dos aparatos."
+      : "Trabaja como esclavo: se queda escuchando y arranca cuando el dispositivo 1 lo indica.";
+    $("iniciar").classList.toggle("hide", d !== "A");
+    $("avisoEsclavo").classList.toggle("hide", d !== "B");
+    pintarPar();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function(b){
+    b.onclick = function(){ if(ac) return; elegirRol(b.getAttribute("data-dev")); };
+  });
+  elegirRol(dev);
+
+  /* ── modo simulación (solo para pruebas) ──────────────── */
+  var SIM = false, SIM_RETRASO = 0;
+  (function(){
+    try{
+      var sp = new URLSearchParams(window.location.search);
+      SIM = sp.get("simular") === "1";
+      SIM_RETRASO = parseInt(sp.get("retraso") || "0", 10) || 0;
+    }catch(e){}
+  })();
+  // Envolvente determinista en función del reloj absoluto: los dos aparatos
+  // "escuchan" exactamente el mismo audio, corrido por SIM_RETRASO.
+  function envSim(t){
+    var k = Math.floor(t / 50);
+    var x = Math.sin(k * 12.9898) * 43758.5453;
+    var ruido = x - Math.floor(x);
+    return 0.05 + 0.45 * ruido * ruido;
+  }
+  function streamSimulado(){
+    var AC = window.AudioContext || window.webkitAudioContext;
+    ac = new AC();
+    var dst = ac.createMediaStreamDestination();
+    var osc = ac.createOscillator(); osc.frequency.value = 240;
+    var g = ac.createGain(); g.gain.value = 0;
+    osc.connect(g); g.connect(dst); osc.start();
+    setInterval(function(){ g.gain.value = envSim(Date.now() - SIM_RETRASO); }, 20);
+    return Promise.resolve(dst.stream);
   }
 
-  $("rec").onclick = function(){
-    if($("rec").getAttribute("data-state") === "rec") return;
-    startRec();
-  };
+  /* ── helpers de red ───────────────────────────────────── */
+  var cab = { apikey:KEY, Authorization:"Bearer " + KEY, "Content-Type":"application/json" };
+  function enviar(fila){
+    fila.sala = SALA;
+    return fetch(SUPA, { method:"POST", headers:cab, body:JSON.stringify(fila) });
+  }
+  function traer(q){
+    return fetch(SUPA + "?sala=eq." + encodeURIComponent(SALA) + q,
+                 { headers:{ apikey:KEY, Authorization:"Bearer " + KEY } })
+           .then(function(r){ return r.json(); });
+  }
 
-  function startRec(){
+  function luz(id, clase){ $(id).className = "luz" + (clase ? " " + clase : ""); }
+  function estadoProc(txt, clase){
+    $("filaProc").classList.remove("hide");
+    $("txtProc").textContent = txt;
+    luz("luzProc", clase);
+  }
+
+  /* ── activar micrófono ────────────────────────────────── */
+  $("armar").onclick = function(){
     if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      $("recmsg").innerHTML = '<span class="err">Este navegador no da acceso al micrófono. Probá con Safari o Chrome.</span>';
-      return;
+      $("txtMic").textContent = "Este navegador no permite usar el micrófono.";
+      luz("luzMic", "err"); return;
     }
-    navigator.mediaDevices.getUserMedia({
+    $("armar").disabled = true;
+    $("txtMic").textContent = "Pidiendo permiso…";
+    (SIM ? streamSimulado() : navigator.mediaDevices.getUserMedia({
       audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false, channelCount:1 }
-    }).then(function(s){
+    })).then(function(s){
       stream = s;
-      var AC = window.AudioContext || window.webkitAudioContext;
-      ac = new AC();
+      if(!ac){
+        var AC = window.AudioContext || window.webkitAudioContext;
+        ac = new AC();
+      }
       if(ac.state === "suspended") ac.resume();
-
-      blocks = []; t0 = null; blockLen = 0;
-      srcNode  = ac.createMediaStreamSource(stream);
-      proc     = ac.createScriptProcessor(1024, 1, 1);
-      gainNode = ac.createGain();
-      gainNode.gain.value = 0;               // que no vuelva por el parlante
-
+      srcNode = ac.createMediaStreamSource(stream);
+      proc    = ac.createScriptProcessor(1024, 1, 1);
+      mudo    = ac.createGain(); mudo.gain.value = 0;
       proc.onaudioprocess = function(e){
-        var d = e.inputBuffer.getChannelData(0), i, s2 = 0;
-        for(i = 0; i < d.length; i++) s2 += d[i] * d[i];
-        var rms = Math.sqrt(s2 / d.length);
+        var d = e.inputBuffer.getChannelData(0), i, acc = 0;
+        for(i = 0; i < d.length; i++) acc += d[i] * d[i];
+        var rms = Math.sqrt(acc / d.length);
+        $("medidor").style.width = Math.min(100, rms * 320) + "%";
+        if(!grabando) return;
         if(t0 === null){ t0 = Date.now() - (d.length / ac.sampleRate) * 1000; blockLen = d.length; }
         blocks.push(rms);
-        $("meter").style.width = Math.min(100, rms * 320) + "%";
       };
+      srcNode.connect(proc); proc.connect(mudo); mudo.connect(ac.destination);
 
-      srcNode.connect(proc); proc.connect(gainNode); gainNode.connect(ac.destination);
-
-      $("rec").setAttribute("data-state", "rec");
-      $("outcard").classList.add("hide");
-      var fin = Date.now() + DUR_MS;
-      var tick = setInterval(function(){
-        var q = Math.max(0, Math.ceil((fin - Date.now()) / 1000));
-        $("rec").innerHTML = "Grabando<br>" + q + " s";
-      }, 200);
-      $("recmsg").textContent = "Grabando el audio del televisor. No hables cerca del micrófono.";
-
-      stopTimer = setTimeout(function(){
-        clearInterval(tick);
-        finishRec();
-      }, DUR_MS);
+      $("armar").classList.add("hide");
+      $("medidorCaja").classList.remove("hide");
+      $("reiniciar").classList.remove("hide");
+      luz("luzMic", "on");
+      $("txtMic").textContent = "Micrófono activo y escuchando.";
+      latir(); tLatido = setInterval(latir, LATIDO);
+      tSondeo = setInterval(sondear, SONDEO);
+      sondear();
+      if(dev === "B") estadoProc("Esperando la orden del dispositivo 1…", "wait");
     }).catch(function(err){
-      $("recmsg").innerHTML = '<span class="err">No se pudo abrir el micrófono (' + (err && err.name ? err.name : "error") +
-        '). Hay que dar permiso, y la página tiene que estar en HTTPS.</span>';
+      $("armar").disabled = false;
+      luz("luzMic", "err");
+      $("txtMic").textContent = "No se pudo abrir el micrófono (" + (err && err.name ? err.name : "error") + "). Hay que dar permiso.";
     });
+  };
+
+  /* ── presencia ────────────────────────────────────────── */
+  function latir(){
+    enviar({ sesion:"presencia", tipo:"listo", dispositivo:dev }).catch(function(){});
+  }
+  function pintarPar(){
+    var otro = dev === "A" ? "2" : "1";
+    if(!ac){ $("txtPar").textContent = "—"; luz("luzPar", ""); return; }
+    if(parListo){
+      $("txtPar").textContent = "Dispositivo " + otro + " escuchando.";
+      luz("luzPar", "on");
+      if(dev === "A" && !grabando) $("iniciar").disabled = false;
+    }else{
+      $("txtPar").textContent = "Esperando que el dispositivo " + otro + " active su micrófono…";
+      luz("luzPar", "wait");
+      if(dev === "A") $("iniciar").disabled = true;
+    }
   }
 
-  function finishRec(){
-    var sr = ac ? ac.sampleRate : 48000;
-    var n  = blocks.length;
-    cleanup();
-    $("rec").setAttribute("data-state", "idle");
-    $("rec").innerHTML = "Grabar<br>20 s";
-    $("meter").style.width = "0%";
+  /* ── sondeo: presencia del otro + orden de inicio ─────── */
+  function sondear(){
+    var otro = dev === "A" ? "B" : "A";
+    traer("&tipo=eq.listo&dispositivo=eq." + otro + "&order=creado.desc&limit=1&select=creado")
+      .then(function(f){
+        var ok = false;
+        if(f && f.length) ok = (Date.now() - new Date(f[0].creado).getTime()) < VENTANA_PAR;
+        if(ok !== parListo){ parListo = ok; pintarPar(); }
+      }).catch(function(){});
 
-    if(n < 50 || t0 === null){
-      $("recmsg").innerHTML = '<span class="err">La grabación salió demasiado corta. Probá de nuevo.</span>';
-      return;
-    }
+    if(dev !== "B" || grabando) return;
+    traer("&tipo=eq.orden&order=creado.desc&limit=1&select=sesion,inicio_en")
+      .then(function(f){
+        if(!f || !f.length) return;
+        var o = f[0];
+        if(o.sesion === sesionVista) return;
+        if(o.inicio_en - Date.now() < -2000) return;   // orden vieja
+        sesionVista = o.sesion;
+        sesion = o.sesion;
+        programar(o.inicio_en);
+      }).catch(function(){});
+  }
 
-    // envolvente en dB, normalizada a 0-255
+  /* ── inicio del estudio ───────────────────────────────── */
+  $("iniciar").onclick = function(){
+    if(!ac || grabando) return;
+    sesion = "s" + Date.now() + "-" + Math.floor(Math.random() * 100000);
+    var inicio = Date.now() + PREAVISO;
+    $("iniciar").disabled = true;
+    estadoProc("Avisando al dispositivo 2…", "wait");
+    enviar({ sesion:sesion, tipo:"orden", dispositivo:dev, inicio_en:inicio })
+      .then(function(r){
+        if(!r.ok) throw new Error("HTTP " + r.status);
+        programar(inicio);
+      })
+      .catch(function(){
+        estadoProc("No se pudo avisar al otro aparato. Revisá la conexión.", "err");
+        $("iniciar").disabled = false;
+      });
+  };
+
+  function programar(inicio){
+    $("iniciar").classList.add("hide");
+    $("avisoEsclavo").classList.add("hide");
+    $("filaProc").classList.add("hide");
+    $("cuenta").classList.remove("hide");
+    clearInterval(tCuenta);
+    tCuenta = setInterval(function(){
+      var falta = inicio - Date.now();
+      if(falta <= 0){ clearInterval(tCuenta); $("cuenta").textContent = "0"; return; }
+      $("cuenta").textContent = Math.ceil(falta / 1000);
+    }, 100);
+    clearTimeout(tGrab);
+    tGrab = setTimeout(arrancar, Math.max(0, inicio - Date.now()));
+  }
+
+  function arrancar(){
+    clearInterval(tCuenta);
+    blocks = []; t0 = null; blockLen = 0; grabando = true;
+    var fin = Date.now() + DUR_MS;
+    $("cuenta").textContent = Math.ceil(DUR_MS / 1000);
+    tCuenta = setInterval(function(){
+      var q = Math.max(0, Math.ceil((fin - Date.now()) / 1000));
+      $("cuenta").textContent = q;
+    }, 200);
+    estadoProc("Grabando. No hables cerca del micrófono.", "wait");
+    setTimeout(terminar, DUR_MS);
+  }
+
+  function terminar(){
+    grabando = false;
+    clearInterval(tCuenta);
+    $("cuenta").classList.add("hide");
+    var n = blocks.length;
+    if(n < 50 || t0 === null){ estadoProc("La grabación salió vacía. Reiniciá el estudio.", "err"); return; }
+
     var db = new Float64Array(n), mn = Infinity, mx = -Infinity, i;
     for(i = 0; i < n; i++){
       db[i] = 20 * Math.log10(blocks[i] + 1e-7);
@@ -349,101 +418,64 @@
     var rng = Math.max(mx - mn, 1e-6), bin = "";
     for(i = 0; i < n; i++) bin += String.fromCharCode(Math.round(255 * (db[i] - mn) / rng));
 
-    var head = { v:1, d:dev, t0:Math.round(t0), sr:Math.round(sr), bl:blockLen };
-    var code = "SYNC1." + btoa(JSON.stringify(head)) + "." + btoa(bin);
-
-    $("out").value = code;
-    $(dev === "A" ? "inA" : "inB").value = code;
-    if(mx - mn <= 6) $("plano").classList.remove("hide");
-    sincronizar(code);
+    var mia = { t0:Math.round(t0), dt:(blockLen / ac.sampleRate) * 1000, env:db2arr(bin) };
+    estadoProc("Enviando el fragmento…", "wait");
+    enviar({ sesion:sesion, tipo:"fragmento", dispositivo:dev, t0:mia.t0, dt:mia.dt, env:btoa(bin) })
+      .then(function(r){
+        if(!r.ok) throw new Error("HTTP " + r.status);
+        estadoProc("Enviado. Esperando el fragmento del otro aparato…", "wait");
+        esperarFragmento(mia, Date.now() + ESPERA_FRAG);
+      })
+      .catch(function(){ estadoProc("No se pudo enviar el fragmento. Revisá la conexión.", "err"); });
   }
 
-  /* ── envío automático y espera del otro televisor ─────── */
-  function estado(txt, malo){
-    $("recmsg").innerHTML = malo ? '<span class="err">' + txt + '</span>' : txt;
+  function db2arr(bin){
+    var e = new Float64Array(bin.length), k;
+    for(k = 0; k < bin.length; k++) e[k] = bin.charCodeAt(k);
+    return e;
   }
 
-  function sincronizar(code){
-    var mia;
-    try{ mia = parse(code); }catch(e){ return; }
-    var envB64 = code.split(".")[2];
+  function esperarFragmento(mia, limite){
     var otro = dev === "A" ? "B" : "A";
-    var cab = { apikey:SUPA_KEY, Authorization:"Bearer " + SUPA_KEY, "Content-Type":"application/json" };
-
-    estado("Enviando el fragmento…");
-    fetch(SUPA_URL, {
-      method:"POST", headers:cab,
-      body: JSON.stringify({ sala:SALA, dispositivo:dev, t0:mia.t0, dt:mia.dt, env:envB64 })
-    }).then(function(r){
-      if(!r.ok) throw new Error("HTTP " + r.status);
-      estado("Enviado. Esperando al otro televisor…");
-      esperar(mia, otro, Date.now() + ESPERA_MS);
-    }).catch(function(){
-      estado("No se pudo enviar automáticamente (sin internet). Pasá el código de abajo por mensaje y usá la pestaña Comparar.", true);
-      $("outcard").classList.remove("hide");
-    });
-  }
-
-  function esperar(mia, otro, limite){
-    var url = SUPA_URL + "?sala=eq." + encodeURIComponent(SALA) +
-              "&dispositivo=eq." + otro + "&order=creado.desc&limit=5&select=t0,dt,env";
-    fetch(url, { headers:{ apikey:SUPA_KEY, Authorization:"Bearer " + SUPA_KEY } })
-      .then(function(r){ return r.json(); })
-      .then(function(filas){
-        var i, f;
-        for(i = 0; i < (filas || []).length; i++){
-          f = filas[i];
-          // solo sirve si grabó a la vez que nosotros
-          if(Math.abs(f.t0 - mia.t0) > 60000) continue;
-          var raw = atob(f.env), env = new Float64Array(raw.length), k;
-          for(k = 0; k < raw.length; k++) env[k] = raw.charCodeAt(k);
-          var suya = { t0:f.t0, dt:f.dt, env:env };
-          estado("Listo: los dos fragmentos llegaron.");
+    traer("&tipo=eq.fragmento&sesion=eq." + encodeURIComponent(sesion) +
+          "&dispositivo=eq." + otro + "&order=creado.desc&limit=1&select=t0,dt,env")
+      .then(function(f){
+        if(f && f.length){
+          var raw = atob(f[0].env);
+          var suya = { t0:f[0].t0, dt:f[0].dt, env:db2arr(raw) };
           var A = dev === "A" ? mia : suya;
           var B = dev === "A" ? suya : mia;
           var err = analizar(A, B);
-          if(err) estado(err, true);
+          if(err) estadoProc(err, "err");
+          else estadoProc("Estudio completo.", "on");
           return;
         }
         if(Date.now() > limite){
-          estado("El otro televisor no envió nada. Revisá que haya grabado, o pasá el código de abajo por mensaje.", true);
-          $("outcard").classList.remove("hide");
+          estadoProc("El otro aparato no envió su fragmento. Reiniciá el estudio.", "err");
           return;
         }
-        setTimeout(function(){ esperar(mia, otro, limite); }, SONDEO_MS);
+        tEsperaFrag = setTimeout(function(){ esperarFragmento(mia, limite); }, SONDEO);
       })
       .catch(function(){
-        if(Date.now() > limite){ estado("Se perdió la conexión. Usá el código de abajo.", true); $("outcard").classList.remove("hide"); return; }
-        setTimeout(function(){ esperar(mia, otro, limite); }, SONDEO_MS);
+        if(Date.now() > limite){ estadoProc("Se perdió la conexión.", "err"); return; }
+        tEsperaFrag = setTimeout(function(){ esperarFragmento(mia, limite); }, SONDEO);
       });
   }
 
-  $("copy").onclick = function(){
-    var t = $("out");
-    t.select(); t.setSelectionRange(0, 99999);
-    var done = function(){ $("copy").textContent = "Copiado"; setTimeout(function(){ $("copy").textContent = "Copiar"; }, 1600); };
-    if(navigator.clipboard) navigator.clipboard.writeText(t.value).then(done, function(){ document.execCommand("copy"); done(); });
-    else { document.execCommand("copy"); done(); }
+  /* ── reiniciar ────────────────────────────────────────── */
+  $("reiniciar").onclick = function(){
+    grabando = false;
+    clearInterval(tCuenta); clearTimeout(tGrab); clearTimeout(tEsperaFrag);
+    blocks = []; t0 = null; sesion = null; sesionVista = null;
+    $("cuenta").classList.add("hide");
+    $("rescard").classList.add("hide");
+    $("filaProc").classList.add("hide");
+    if(dev === "A"){ $("iniciar").classList.remove("hide"); $("iniciar").disabled = !parListo; }
+    else{ $("avisoEsclavo").classList.remove("hide"); estadoProc("Esperando la orden del dispositivo 1…", "wait"); }
+    pintarPar();
   };
 
-  $("share").onclick = function(){
-    if(navigator.share) navigator.share({ text:$("out").value });
-    else $("copy").click();
-  };
-
-  /* ── comparación ──────────────────────────────────────── */
-  function parse(code){
-    code = (code || "").trim();
-    var p = code.split(".");
-    if(p.length !== 3 || p[0] !== "SYNC1") throw new Error("El código no tiene el formato correcto.");
-    var head = JSON.parse(atob(p[1]));
-    var raw  = atob(p[2]);
-    var env  = new Float64Array(raw.length);
-    for(var i = 0; i < raw.length; i++) env[i] = raw.charCodeAt(i);
-    if(env.length < 50) throw new Error("Una de las grabaciones es demasiado corta.");
-    return { t0:head.t0, dt:(head.bl / head.sr) * 1000, env:env };
-  }
-
+  /* ── análisis ─────────────────────────────────────────── */
   function resample(s, gridT0, n){
     var out = new Float64Array(n), k;
     for(k = 0; k < n; k++) out[k] = NaN;
@@ -472,18 +504,7 @@
     return { r:(sab / n - ma * mb) / Math.sqrt(va * vb), n:n };
   }
 
-  $("calc").onclick = function(){
-    var e = $("err");
-    e.classList.add("hide");
-    $("rescard").classList.add("hide");
-    var A, B;
-    try{ A = parse($("inA").value); B = parse($("inB").value); }
-    catch(ex){ e.textContent = ex.message; e.classList.remove("hide"); return; }
-    var msg = analizar(A, B);
-    if(msg){ e.textContent = msg; e.classList.remove("hide"); }
-  };
-
-  // Devuelve null si salió bien, o el texto del problema.
+  // null si salió bien; si no, el texto del problema.
   function analizar(A, B){
     $("rescard").classList.add("hide");
     var gridT0 = Math.min(A.t0, B.t0);
@@ -491,77 +512,70 @@
     var n      = Math.ceil((endT - gridT0) / GRID_MS) + 1;
     var a = resample(A, gridT0, n), b = resample(B, gridT0, n);
 
-    var maxL = Math.round(LAG_MAX / GRID_MS), best = null, bestL = 0, any = false;
-    for(var L = -maxL; L <= maxL; L++){
+    var maxL = Math.round(LAG_MAX / GRID_MS), best = null, bestL = 0, any = false, L;
+    for(L = -maxL; L <= maxL; L++){
       var c = corrAt(a, b, L);
       if(!c) continue;
       any = true;
       if(best === null || c.r > best.r){ best = c; bestL = L; }
     }
+    if(!any) return "Las dos grabaciones no se superponen lo suficiente. Reiniciá el estudio.";
 
-    if(!any || best === null){
-      return "Las dos grabaciones casi no se superponen en el tiempo. Hay que apretar grabar a la vez en los dos aparatos (dentro de los mismos 8 segundos).";
-    }
-
-    render(a, b, bestL, best, gridT0);
+    render(a, b, bestL, best);
     return null;
   }
 
-  function render(a, b, bestL, best, gridT0){
-    var lag = bestL * GRID_MS;                 // >0 → el TV 2 va atrasado
-    var abs = Math.abs(lag);
-    var r   = best.r;
+  function render(a, b, bestL, best){
+    var lag = bestL * GRID_MS;   // >0 → el dispositivo 2 va atrasado
+    var abs = Math.abs(lag), r = best.r;
 
-    $("bigms").textContent = (abs / 1000).toFixed(2).replace(".", ",") + " s";
+    $("bigms").innerHTML = abs + '<small>ms</small>';
     $("bigms").style.color = abs <= UMBRAL ? "var(--good)" : "var(--bad)";
 
     var pill = $("pill");
     pill.className = "pill " + (abs <= UMBRAL ? "ok" : "no");
-    pill.textContent = abs <= UMBRAL ? "Dentro del límite de 1 segundo" : "Fuera del límite de 1 segundo";
 
-    var quien, texto;
     if(abs < 60){
-      texto = "Los dos televisores van <strong>prácticamente juntos</strong>. El gol se grita al mismo tiempo en los dos deptos.";
-    } else {
-      quien = lag > 0 ? "TV 1 (tu depto)" : "TV 2 (el vecino)";
-      texto = "El <strong>" + quien + "</strong> va adelantado " +
-              (abs / 1000).toFixed(2).replace(".", ",") + " s. " +
-              (abs <= UMBRAL
-                ? "Es poco: alcanza para que el grito llegue casi junto con la jugada."
-                : "Es suficiente para escuchar el grito <strong>antes</strong> de ver el gol.");
+      pill.textContent = "Sincronizados";
+      $("verdict").innerHTML = "Los dos dispositivos van <strong>prácticamente juntos</strong>. El gol se grita al mismo tiempo en los dos lados.";
+    }else{
+      var adelantado = lag < 0;   // el 2 va antes que el 1
+      pill.textContent = adelantado ? "Dispositivo 2 adelantado" : "Dispositivo 2 atrasado";
+      $("verdict").innerHTML =
+        "El <strong>dispositivo 2</strong> está <strong>" + (adelantado ? "adelantado" : "atrasado") +
+        " " + abs + " ms</strong> respecto del dispositivo 1. " +
+        (abs <= UMBRAL
+          ? "Está dentro del límite de 1 segundo: nadie se entera antes."
+          : "Supera el límite de 1 segundo: de ese lado se escucha el grito antes de ver la jugada.");
     }
-    $("verdict").innerHTML = texto;
 
     $("sconf").textContent = r.toFixed(2).replace(".", ",");
-    $("sconf").style.color = r >= 0.45 ? "var(--good)" : (r >= 0.25 ? "var(--tv1)" : "var(--bad)");
+    $("sconf").style.color = r >= 0.45 ? "var(--good)" : (r >= 0.25 ? "var(--d1)" : "var(--bad)");
     $("sover").textContent = (best.n * GRID_MS / 1000).toFixed(1).replace(".", ",") + " s";
-
-    $("conf-note").textContent =
+    $("confnota").textContent =
       r >= 0.45 ? "Confianza alta: las dos grabaciones son claramente el mismo audio. El número es fiable."
-    : r >= 0.25 ? "Confianza media. Repetí la medición durante una jugada con relato fuerte; si las dos veces da parecido, es correcto."
-    : "Confianza baja: puede que un micrófono haya captado ruido de la habitación en vez del televisor, o que el audio estuviera casi en silencio. Repetí la medición.";
+    : r >= 0.25 ? "Confianza media. Repetí el estudio durante una jugada con relato fuerte."
+    : "Confianza baja: puede que un micrófono haya captado ruido del ambiente en vez del televisor. Repetí el estudio.";
 
-    draw(a, b, bestL);
+    dibujar(a, b, bestL);
     $("rescard").classList.remove("hide");
     $("rescard").scrollIntoView({ behavior:"smooth", block:"nearest" });
   }
 
-  function draw(a, b, L){
+  function dibujar(a, b, L){
     var cv = $("cv"), g = cv.getContext("2d"), W = cv.width, H = cv.height;
     var css = getComputedStyle(document.documentElement);
     g.clearRect(0, 0, W, H);
-
-    var lo = null, hi = null, k;
+    var lo = null, hi = null, k, j;
     for(k = 0; k < a.length; k++){
-      var j = k + L;
+      j = k + L;
       if(j < 0 || j >= b.length) continue;
       if(a[k] !== a[k] || b[j] !== b[j]) continue;
       if(lo === null) lo = k;
       hi = k;
     }
-    if(lo === null) return;
-
-    var series = function(arr, shift, color){
+    if(lo === null || hi === lo) return;
+    var traza = function(arr, shift, color){
       g.beginPath();
       for(var k2 = lo; k2 <= hi; k2++){
         var v = arr[k2 + shift];
@@ -572,8 +586,12 @@
       }
       g.strokeStyle = color; g.lineWidth = 2.5; g.lineJoin = "round"; g.stroke();
     };
-    series(a, 0, css.getPropertyValue("--tv1").trim() || "#F0A03C");
-    series(b, L, css.getPropertyValue("--tv2").trim() || "#56C4E8");
+    traza(a, 0, css.getPropertyValue("--d1").trim() || "#F0A03C");
+    traza(b, L, css.getPropertyValue("--d2").trim() || "#56C4E8");
   }
+
+  window.__PRUEBA__ = { analizar:analizar, db2arr:db2arr };
 })();
 </script>
+</body>
+</html>
