@@ -120,7 +120,7 @@
 
   <div class="tabs" role="tablist">
     <button role="tab" id="tab-medir" aria-selected="true" aria-controls="p-medir">1 · Medir</button>
-    <button role="tab" id="tab-comparar" aria-selected="false" aria-controls="p-comparar">2 · Comparar</button>
+    <button role="tab" id="tab-comparar" aria-selected="false" aria-controls="p-comparar">2 · Respaldo</button>
   </div>
 
   <!-- ── MEDIR ───────────────────────────────────────────── -->
@@ -131,6 +131,7 @@
         <li>Los dos televisores en <b>el mismo canal</b>, con volumen normal.</li>
         <li>Cada uno con su aparato <b>cerca del televisor</b> y sin auriculares puestos.</li>
         <li>Coordinen por teléfono y aprieten grabar <b>a la vez</b> — con que arranquen dentro de los mismos 8 segundos alcanza.</li>
+        <li>Al terminar, <b>el resultado aparece solo</b> en las dos pantallas. No hay que pasarse nada.</li>
       </ol>
       <p class="note">Grabá durante juego corrido, no en el entretiempo: la medición necesita audio con cambios (relato, cancha, público). Silencio no sirve.</p>
     </div>
@@ -146,12 +147,13 @@
         <button type="button" class="rec" id="rec" data-state="idle">Grabar<br>20 s</button>
         <div class="meter" aria-hidden="true"><i id="meter"></i></div>
         <p id="recmsg" style="text-align:center;">Tocá para pedir el micrófono y empezar.</p>
+        <p id="plano" class="note hide">El audio sonó bastante plano. Si el resultado da poco confiable, repetí durante una jugada con más relato.</p>
       </div>
     </div>
 
     <div class="card hide" id="outcard">
-      <h2>Listo · pasá este código</h2>
-      <p>Mandáselo por WhatsApp al otro depto. El que compara necesita los dos códigos.</p>
+      <h2>Respaldo · pasá este código</h2>
+      <p>Solo hace falta si el envío automático falló. Mandáselo por mensaje al otro depto y péguenlo en la pestaña Comparar.</p>
       <textarea id="out" readonly rows="4"></textarea>
       <div class="row">
         <button class="btn" id="copy">Copiar</button>
@@ -208,6 +210,14 @@
   var MIN_OVER = 150;     // muestras mínimas solapadas (150 × 20 ms = 3 s)
   var UMBRAL   = 1000;    // el límite que pidió el usuario, en ms
 
+  /* Envío automático: los dos aparatos dejan su fragmento acá y cada uno
+     busca el del otro. La clave es la publicable (va en el navegador). */
+  var SUPA_URL = "https://duqrcrabazpixdkltpbd.supabase.co/rest/v1/sincro_tv";
+  var SUPA_KEY = "sb_publishable_jqsitKb6yi7GBuqXOwPy_w_DEmtw-3w";
+  var SALA = "final";
+  var ESPERA_MS = 150000;  // cuánto esperamos al otro televisor
+  var SONDEO_MS = 3000;
+
   var dev = "A";
   var ac, stream, proc, srcNode, gainNode;
   var blocks = [], t0 = null, blockLen = 0, stopTimer = null;
@@ -239,8 +249,12 @@
 
   /* ── preselección por link: ?tv=1 o ?tv=2 ─────────────── */
   (function(){
-    var q = null;
-    try{ q = new URLSearchParams(window.location.search).get("tv"); }catch(e){}
+    var q = null, s = null;
+    try{
+      var sp = new URLSearchParams(window.location.search);
+      q = sp.get("tv"); s = sp.get("sala");
+    }catch(e){}
+    if(s) SALA = s;
     if(q !== "1" && q !== "2") return;
     var want = q === "1" ? "A" : "B";
     Array.prototype.forEach.call(document.querySelectorAll(".seg button"), function(b){
@@ -339,12 +353,69 @@
     var code = "SYNC1." + btoa(JSON.stringify(head)) + "." + btoa(bin);
 
     $("out").value = code;
-    $("outcard").classList.remove("hide");
-    $("recmsg").textContent = "Grabación lista: " + (mx - mn > 6
-      ? "el audio tenía buena variación."
-      : "ojo, el audio sonó bastante plano — si el resultado da poco confiable, repetí con más relato.");
     $(dev === "A" ? "inA" : "inB").value = code;
-    $("outcard").scrollIntoView({ behavior:"smooth", block:"nearest" });
+    if(mx - mn <= 6) $("plano").classList.remove("hide");
+    sincronizar(code);
+  }
+
+  /* ── envío automático y espera del otro televisor ─────── */
+  function estado(txt, malo){
+    $("recmsg").innerHTML = malo ? '<span class="err">' + txt + '</span>' : txt;
+  }
+
+  function sincronizar(code){
+    var mia;
+    try{ mia = parse(code); }catch(e){ return; }
+    var envB64 = code.split(".")[2];
+    var otro = dev === "A" ? "B" : "A";
+    var cab = { apikey:SUPA_KEY, Authorization:"Bearer " + SUPA_KEY, "Content-Type":"application/json" };
+
+    estado("Enviando el fragmento…");
+    fetch(SUPA_URL, {
+      method:"POST", headers:cab,
+      body: JSON.stringify({ sala:SALA, dispositivo:dev, t0:mia.t0, dt:mia.dt, env:envB64 })
+    }).then(function(r){
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      estado("Enviado. Esperando al otro televisor…");
+      esperar(mia, otro, Date.now() + ESPERA_MS);
+    }).catch(function(){
+      estado("No se pudo enviar automáticamente (sin internet). Pasá el código de abajo por mensaje y usá la pestaña Comparar.", true);
+      $("outcard").classList.remove("hide");
+    });
+  }
+
+  function esperar(mia, otro, limite){
+    var url = SUPA_URL + "?sala=eq." + encodeURIComponent(SALA) +
+              "&dispositivo=eq." + otro + "&order=creado.desc&limit=5&select=t0,dt,env";
+    fetch(url, { headers:{ apikey:SUPA_KEY, Authorization:"Bearer " + SUPA_KEY } })
+      .then(function(r){ return r.json(); })
+      .then(function(filas){
+        var i, f;
+        for(i = 0; i < (filas || []).length; i++){
+          f = filas[i];
+          // solo sirve si grabó a la vez que nosotros
+          if(Math.abs(f.t0 - mia.t0) > 60000) continue;
+          var raw = atob(f.env), env = new Float64Array(raw.length), k;
+          for(k = 0; k < raw.length; k++) env[k] = raw.charCodeAt(k);
+          var suya = { t0:f.t0, dt:f.dt, env:env };
+          estado("Listo: los dos fragmentos llegaron.");
+          var A = dev === "A" ? mia : suya;
+          var B = dev === "A" ? suya : mia;
+          var err = analizar(A, B);
+          if(err) estado(err, true);
+          return;
+        }
+        if(Date.now() > limite){
+          estado("El otro televisor no envió nada. Revisá que haya grabado, o pasá el código de abajo por mensaje.", true);
+          $("outcard").classList.remove("hide");
+          return;
+        }
+        setTimeout(function(){ esperar(mia, otro, limite); }, SONDEO_MS);
+      })
+      .catch(function(){
+        if(Date.now() > limite){ estado("Se perdió la conexión. Usá el código de abajo.", true); $("outcard").classList.remove("hide"); return; }
+        setTimeout(function(){ esperar(mia, otro, limite); }, SONDEO_MS);
+      });
   }
 
   $("copy").onclick = function(){
@@ -408,7 +479,13 @@
     var A, B;
     try{ A = parse($("inA").value); B = parse($("inB").value); }
     catch(ex){ e.textContent = ex.message; e.classList.remove("hide"); return; }
+    var msg = analizar(A, B);
+    if(msg){ e.textContent = msg; e.classList.remove("hide"); }
+  };
 
+  // Devuelve null si salió bien, o el texto del problema.
+  function analizar(A, B){
+    $("rescard").classList.add("hide");
     var gridT0 = Math.min(A.t0, B.t0);
     var endT   = Math.max(A.t0 + A.env.length * A.dt, B.t0 + B.env.length * B.dt);
     var n      = Math.ceil((endT - gridT0) / GRID_MS) + 1;
@@ -423,13 +500,12 @@
     }
 
     if(!any || best === null){
-      e.textContent = "Las dos grabaciones casi no se superponen en el tiempo. Hay que apretar grabar a la vez en los dos aparatos (dentro de los mismos 8 segundos).";
-      e.classList.remove("hide");
-      return;
+      return "Las dos grabaciones casi no se superponen en el tiempo. Hay que apretar grabar a la vez en los dos aparatos (dentro de los mismos 8 segundos).";
     }
 
     render(a, b, bestL, best, gridT0);
-  };
+    return null;
+  }
 
   function render(a, b, bestL, best, gridT0){
     var lag = bestL * GRID_MS;                 // >0 → el TV 2 va atrasado
